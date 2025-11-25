@@ -57,11 +57,11 @@ impl Node {
                 stack.push(node);
             } else if let Event::Text(e) = event {
                 if let Some(current) = stack.last_mut() {
-                    let text = String::from_utf8_lossy(e.as_ref()).into_owned();
+                    let text = String::from_utf8_lossy(e.as_ref());
                     if text.trim().is_empty() {
                         current.value = Values::None;
                     } else {
-                        current.value = Values::String(text);
+                        current.value = text.as_ref().into();
                     }
                 }
             } else if let Event::End(_) = event {
@@ -107,4 +107,20 @@ pub enum Values {
     Float(f64),
     Integer(i64),
     Date(NaiveDate),
+}
+
+impl From<&str> for Values {
+    fn from(value: &str) -> Self {
+        convert()
+    }
+} 
+
+impl From<String> for Values {
+    fn from(value: String) -> Self {
+        convert()
+    }
+}
+
+fn convert() -> Values {
+   Values::default() 
 }
