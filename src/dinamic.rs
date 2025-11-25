@@ -1,108 +1,110 @@
 use std::fmt::Display;
 
 use chrono::NaiveDate;
-use indexmap::IndexMap;
-use quick_xml::{
-    Reader,
-    events::{BytesStart, Event},
-};
+use quick_xml::{Reader, events::Event};
 use std::str;
 
-#[derive(Debug, Clone)]
-pub struct Dynamic {
-    name: String,
-    fields: IndexMap<String, Values>,
+#[derive(Debug, Clone, Default)]
+pub struct Node {
+    pub name: String,
+    pub attributes: Vec<(String, String)>,
+    pub value: Values,
+    pub children: Vec<Node>,
 }
 
-impl Dynamic {
-    pub fn new(name: String) -> Self {
-        Dynamic {
-            name,
-            fields: IndexMap::new(),
-        }
-    }
-
-    pub fn put(&mut self, name: String, value: Values) -> &Self {
-        self.fields.insert(name, value);
-        self
-    }
-
-    pub fn decode(xml: String) -> Dynamic {
-        let mut reader = Reader::from_str(&xml);
-        let mut level = 0i64;
-        let mut root = None;
-        let mut childs = Vec::new();
-        loop {
-            let event = match reader.read_event() {
-                Ok(ev) => ev,
-                Err(_) => Event::Eof,
-            };
-
-            if let Event::Eof = event {
-                break;
-            } else if let Event::Start(e) = event {
-                if level == 0 {
-                    root = Some(e);
-                } else if level == 1 {
-                    // Pegar as tag
-                    childs.push(e);
-                    // Pegar os valores
-                } else if level == 2 {
-                    todo!("Deve-se fazer uma recursão aqui")
-                }
-                level += 1;
-            } else if let Event::End(_) = event {
-                level -= 1;
-            }
-        }
-
-        if let Some(e) = root {
-
-            childs.iter().for_each(|el|{
-                println!("{:#?}", el);
-            });
-
-            let bytes: Vec<u8> = e.local_name().as_ref().to_vec();
-            Dynamic {
-                name: String::from_utf8(bytes).expect("UTF-8 inválido"),
-                fields: IndexMap::new(),
-            }
-        } else {
-            Dynamic {
-                name: String::new(),
-                fields: IndexMap::new(),
-            }
-        }
-
-    }
-}
-
-impl Display for Dynamic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
-impl From<String> for Dynamic {
-    fn from(value: String) -> Self {
-        Dynamic::decode(value)
-    }
-}
-
-impl From<&str> for Dynamic {
-    fn from(value: &str) -> Self {
-        Dynamic::decode(value.into())
+impl PartialEq for Node {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
     }
 }
 
 //----------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone)]
+impl Node {
+    pub fn decode(xml: String) -> Option<Node> {
+        let mut reader = Reader::from_str(&xml);
+        let mut temp = Vec::new();
+        let mut stack = Vec::new();
+        let mut result = None;
+        loop {
+            let event = match reader.read_event_into(&mut temp) {
+                Ok(ev) => ev,
+                Err(_) => Event::Eof,
+            };
+            
+            if let Event::Eof = event {
+                break;
+            } else if let Event::Start(e) = event {
+                let name = String::from_utf8_lossy(e.name().into_inner()).into_owned();
+                let mut attributes = Vec::new();
+                e.attributes()
+                    .map(|a| {
+                        let attr = a.unwrap();
+                        let key = String::from_utf8_lossy(attr.key.as_ref()).to_string();
+                        let value = attr.unescape_value().unwrap().into_owned();
+                        (key, value)
+                    })
+                    .for_each(|f| {
+                        attributes.push(f);
+                    });
+
+                let node = Node {
+                    name,
+                    attributes,
+                    value: Values::None,
+                    children: Vec::default(),
+                };
+                stack.push(node);
+            } else if let Event::Text(e) = event {
+                if let Some(current) = stack.last_mut() {
+                    let text = String::from_utf8_lossy(e.as_ref()).into_owned();
+                    if text.trim().is_empty() {
+                        current.value = Values::None;
+                    } else {
+                        current.value = Values::String(text);
+                    }
+                }
+            } else if let Event::End(_) = event {
+                let finished = stack.pop();
+                if let Some(parent) = stack.last_mut() {
+                    parent.children.push(finished.unwrap());
+                } else {
+                    result = finished;
+                }
+            }
+
+            temp.clear();
+        }
+
+        result
+    }
+}
+
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl From<String> for Node {
+    fn from(value: String) -> Self {
+        Node::decode(value).expect("error on build node")
+    }
+}
+
+impl From<&str> for Node {
+    fn from(value: &str) -> Self {
+        Node::decode(value.into()).expect("error on build node")
+    }
+}
+
+//----------------------------------------------------------------------------------------
+#[derive(Debug, Clone, Default)]
 pub enum Values {
-    Null,
+    #[default]
+    None,
     String(String),
     Float(f64),
     Integer(i64),
     Date(NaiveDate),
-    Node(Dynamic),
 }
