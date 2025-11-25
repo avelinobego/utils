@@ -31,7 +31,7 @@ impl Node {
                 Ok(ev) => ev,
                 Err(_) => Event::Eof,
             };
-            
+
             if let Event::Eof = event {
                 break;
             } else if let Event::Start(e) = event {
@@ -111,16 +111,23 @@ pub enum Values {
 
 impl From<&str> for Values {
     fn from(value: &str) -> Self {
-        convert()
-    }
-} 
-
-impl From<String> for Values {
-    fn from(value: String) -> Self {
-        convert()
+        let temp: Values = String::from(value).into();
+        temp
     }
 }
 
-fn convert() -> Values {
-   Values::default() 
+impl From<String> for Values {
+    fn from(value: String) -> Self {
+        if value.is_empty() {
+            Values::None
+        } else if let Ok(v) = value.parse::<i64>() {
+            Values::Integer(v)
+        } else if let Ok(v) = value.parse::<f64>() {
+            Values::Float(v)
+        } else if let Ok(v) = value.parse::<chrono::NaiveDate>() {
+            Values::Date(v)
+        } else {
+            Values::String(value)
+        }
+    }
 }
