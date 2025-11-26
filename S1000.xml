@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eSocial xmlns="http://www.esocial.gov.br/schema/evt/evtInfoEmpregador/v02_02_02">
+  <evtInfoEmpregador Id="ID1123456780000002017082410324100001">
+    <ideEvento>
+      <tpAmb>2</tpAmb>
+      <procEmi>1</procEmi>
+      <verProc>QuartaRH eSocial 1.0</verProc>
+    </ideEvento>
+    <ideEmpregador>
+      <tpInsc>1</tpInsc>
+      <nrInsc>12345678</nrInsc>
+    </ideEmpregador>
+    <infoEmpregador>
+      <inclusao>
+        <idePeriodo>
+          <iniValid>2017-01</iniValid>
+        </idePeriodo>
+        <infoCadastro>
+          <nmRazao>NOME DO EMPREGADOR</nmRazao>
+          <classTrib>01</classTrib>
+          <natJurid>2240</natJurid>
+          <indCoop>0</indCoop>
+          <indConstr>0</indConstr>
+          <indDesFolha>0</indDesFolha>
+          <indOptRegEletron>1</indOptRegEletron>
+          <multTabRubricas>N</multTabRubricas>
+          <indEntEd>N</indEntEd>
+          <indEtt>N</indEtt>
+          <contato>
+            <nmCtt>Nome do Contato</nmCtt>
+            <cpfCtt>12345678909</cpfCtt>
+            <foneFixo>1123452345</foneFixo>
+            <email>usuario@dominio.com.br</email>
+          </contato>
+          <softwareHouse>
+            <cnpjSoftHouse>12345678000195</cnpjSoftHouse>
+            <nmRazao>Nome da Software House</nmRazao>
+            <nmCont>Nome do Contato</nmCont>
+            <telefone>1123452345</telefone>
+            <email>usuario@dominio.com.br</email>
+          </softwareHouse>
+          <infoComplementares>
+            <situacaoPJ>
+              <indSitPJ>0</indSitPJ>
+            </situacaoPJ>
+          </infoComplementares>
+        </infoCadastro>
+      </inclusao>
+    </infoEmpregador>
+  </evtInfoEmpregador>
+</eSocial>
