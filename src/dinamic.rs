@@ -1,7 +1,8 @@
 use std::fmt::Display;
 
-use chrono::NaiveDate;
+use once_cell::sync::Lazy;
 use quick_xml::{Reader, events::Event};
+use regex::Regex;
 use std::str;
 
 #[derive(Debug, Clone, Default)]
@@ -19,7 +20,6 @@ impl PartialEq for Node {
 }
 
 //----------------------------------------------------------------------------------------
-
 impl Node {
     pub fn decode(xml: String) -> Option<Node> {
         let mut reader = Reader::from_str(&xml);
@@ -99,6 +99,9 @@ impl From<&str> for Node {
 }
 
 //----------------------------------------------------------------------------------------
+static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})$").unwrap());
+static RE2: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap());
+
 #[derive(Debug, Clone, Default)]
 pub enum Values {
     #[default]
@@ -106,7 +109,8 @@ pub enum Values {
     String(String),
     Float(f64),
     Integer(i64),
-    Date(NaiveDate),
+    YearMonth(i32, i32),
+    YearMonthDay(i32, i32, i32),
 }
 
 impl From<&str> for Values {
@@ -124,8 +128,15 @@ impl From<String> for Values {
             Values::Integer(v)
         } else if let Ok(v) = value.parse::<f64>() {
             Values::Float(v)
-        } else if let Ok(v) = value.parse::<chrono::NaiveDate>() {
-            Values::Date(v)
+        } else if let Some(cap) = RE.captures(&value) {
+            let year = cap.get(1).unwrap().as_str().parse::<i32>().unwrap();
+            let month = cap.get(2).unwrap().as_str().parse::<i32>().unwrap();
+            Values::YearMonth(year, month)
+        } else if let Some(cap) = RE2.captures(&value) {
+            let year = cap.get(1).unwrap().as_str().parse::<i32>().unwrap();
+            let month = cap.get(2).unwrap().as_str().parse::<i32>().unwrap();
+            let day = cap.get(3).unwrap().as_str().parse::<i32>().unwrap();
+            Values::YearMonthDay(year, month, day)
         } else {
             Values::String(value)
         }
