@@ -21,7 +21,7 @@ impl PartialEq for Node {
 
 //----------------------------------------------------------------------------------------
 impl Node {
-    pub fn decode(xml: String) -> Option<Node> {
+    pub fn from_xml(xml: String) -> Option<Node> {
         let mut reader = Reader::from_str(&xml);
         let mut temp = Vec::new();
         let mut stack = Vec::new();
@@ -78,23 +78,43 @@ impl Node {
 
         result
     }
+
+    pub fn to_xml(&self) -> String {
+        let mut result = String::new();
+        self.do_to_xml(&mut result);
+        result
+    }
+
+    fn do_to_xml(&self, buff: &mut String) {
+        if let Values::None = self.value  {
+            buff.push_str(&format!("<{}/>", self.name));
+        } else {
+            buff.push_str(&format!("<{}>", self.name));
+            buff.push_str(&format!("{}", self.value));
+            buff.push_str(&format!("</{}>", self.name));
+        }
+
+        self.children.iter().for_each(|e| {
+            e.do_to_xml(buff);
+        });
+    }
 }
 
 impl Display for Node {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        write!(f, "{}", self.to_xml())
     }
 }
 
 impl From<String> for Node {
     fn from(value: String) -> Self {
-        Node::decode(value).expect("error on build node")
+        Node::from_xml(value).expect("error on build node")
     }
 }
 
 impl From<&str> for Node {
     fn from(value: &str) -> Self {
-        Node::decode(value.into()).expect("error on build node")
+        Node::from_xml(value.into()).expect("error on build node")
     }
 }
 
@@ -109,8 +129,8 @@ pub enum Values {
     String(String),
     Float(f64),
     Integer(i64),
-    YearMonth(i32, i32),
-    YearMonthDay(i32, i32, i32),
+    YearMonth(u64, u64),
+    YearMonthDay(u64, u64, u64),
 }
 
 impl From<&str> for Values {
@@ -129,16 +149,60 @@ impl From<String> for Values {
         } else if let Ok(v) = value.parse::<f64>() {
             Values::Float(v)
         } else if let Some(cap) = RE.captures(&value) {
-            let year = cap.get(1).unwrap().as_str().parse::<i32>().unwrap();
-            let month = cap.get(2).unwrap().as_str().parse::<i32>().unwrap();
+            let year = cap.get(1).unwrap().as_str().parse::<u64>().unwrap();
+            let month = cap.get(2).unwrap().as_str().parse::<u64>().unwrap();
             Values::YearMonth(year, month)
         } else if let Some(cap) = RE2.captures(&value) {
-            let year = cap.get(1).unwrap().as_str().parse::<i32>().unwrap();
-            let month = cap.get(2).unwrap().as_str().parse::<i32>().unwrap();
-            let day = cap.get(3).unwrap().as_str().parse::<i32>().unwrap();
+            let year = cap.get(1).unwrap().as_str().parse::<u64>().unwrap();
+            let month = cap.get(2).unwrap().as_str().parse::<u64>().unwrap();
+            let day = cap.get(3).unwrap().as_str().parse::<u64>().unwrap();
             Values::YearMonthDay(year, month, day)
         } else {
             Values::String(value)
+        }
+    }
+}
+
+impl From<f64> for Values {
+    fn from(value: f64) -> Self {
+        Values::Float(value)
+    }
+}
+
+impl From<(u64, u64)> for Values {
+    fn from(value: (u64, u64)) -> Self {
+        Values::YearMonth(value.0, value.1)
+    }
+}
+
+impl From<(u64, u64, u64)> for Values {
+    fn from(value: (u64, u64, u64)) -> Self {
+        Values::YearMonthDay(value.0, value.1, value.2)
+    }
+}
+
+impl From<i64> for Values {
+    fn from(value: i64) -> Self {
+        Values::Integer(value)
+    }
+}
+
+impl Display for Values {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Values::Float(v) = self {
+            write!(f, "{:.2}", v)
+        } else if let Values::YearMonth(year, month) = self {
+            write!(f, "{}-{}", year, month)
+        } else if let Values::YearMonthDay(year, month, day) = self {
+            write!(f, "{}-{}-{}", year, month, day)
+        } else if let Values::Integer(i) = self {
+            write!(f, "{}", i)
+        } else if let Values::String(s) = self {
+            write!(f, "{}", s)
+        } else if let Values::None = self {
+            write!(f, "")
+        } else {
+            write!(f, "não implementado")
         }
     }
 }
