@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use once_cell::sync::Lazy;
-use quick_xml::{Reader, events::Event};
+use quick_xml::{
+    Reader, Writer,
+    events::{BytesStart, Event},
+};
 use regex::Regex;
 use std::str;
 
@@ -80,23 +83,28 @@ impl Node {
     }
 
     pub fn to_xml(&self) -> String {
-        let mut result = String::new();
-        self.do_to_xml(&mut result);
-        result
+        let mut buffer = Vec::new();
+        self.do_to_xml(&mut buffer);
+        String::from_utf8_lossy(buffer.as_slice()).to_string()
     }
 
-    fn do_to_xml(&self, buff: &mut String) {
-        if let Values::None = self.value  {
-            buff.push_str(&format!("<{}/>", self.name));
+    fn do_to_xml(&self, buff_out: &mut Vec<u8>) {
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut writer = Writer::new(&mut buffer);
+        let start = BytesStart::new(&self.name);
+
+        if let Values::None = self.value {
+            writer.write_event(Event::Empty(start)).expect("event error");
         } else {
-            buff.push_str(&format!("<{}>", self.name));
-            buff.push_str(&format!("{}", self.value));
-            buff.push_str(&format!("</{}>", self.name));
+            writer.write_event(Event::Empty(start)).expect("event error");
         }
 
         self.children.iter().for_each(|e| {
-            e.do_to_xml(buff);
+            e.do_to_xml(buff_out);
         });
+
+        buff_out.extend_from_slice(buffer.as_slice());
+
     }
 }
 
