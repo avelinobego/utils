@@ -3,7 +3,7 @@ use std::fmt::Display;
 use once_cell::sync::Lazy;
 use quick_xml::{
     Reader, Writer,
-    events::{BytesStart, Event},
+    events::{BytesEnd, BytesStart, BytesText, Event},
 };
 use regex::Regex;
 use std::str;
@@ -93,18 +93,31 @@ impl Node {
         let mut writer = Writer::new(&mut buffer);
         let start = BytesStart::new(&self.name);
 
-        if let Values::None = self.value {
-            writer.write_event(Event::Empty(start)).expect("event error");
+        if let Values::None = &self.value {
+            writer
+                .write_event(Event::Empty(start))
+                .expect("event error");
         } else {
-            writer.write_event(Event::Empty(start)).expect("event error");
+            writer
+                .write_event(Event::Start(start.clone()))
+                .expect("event error");
+
+            if let Values::String(s) = &self.value {
+                writer
+                    .write_event(Event::Text(BytesText::new(s)))
+                    .expect("event error");
+            }
+
+            writer
+                .write_event(Event::End(BytesEnd::new(&self.name)))
+                .expect("event error");
+
+            self.children.iter().for_each(|e| {
+                e.do_to_xml(buff_out);
+            });
         }
 
-        self.children.iter().for_each(|e| {
-            e.do_to_xml(buff_out);
-        });
-
         buff_out.extend_from_slice(buffer.as_slice());
-
     }
 }
 
