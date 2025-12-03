@@ -106,6 +106,10 @@ impl Node {
                 writer
                     .write_event(Event::Text(BytesText::new(s)))
                     .expect("event error");
+            } else if let Values::Float(f) = self.value {
+                writer
+                    .write_event(Event::Text(BytesText::new(&f.to_string())))
+                    .expect("event error");
             }
 
             writer
