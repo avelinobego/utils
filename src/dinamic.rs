@@ -12,7 +12,7 @@ use std::str;
 pub struct Node {
     pub name: String,
     pub attributes: Vec<(String, String)>,
-    pub value: Values,
+    pub value: Option<Values>,
     pub children: Vec<Node>,
 }
 
@@ -54,7 +54,7 @@ impl Node {
                 let node = Node {
                     name,
                     attributes,
-                    value: Values::None,
+                    value: None,
                     children: Vec::default(),
                 };
                 stack.push(node);
@@ -62,9 +62,9 @@ impl Node {
                 if let Some(current) = stack.last_mut() {
                     let text = String::from_utf8_lossy(e.as_ref());
                     if text.trim().is_empty() {
-                        current.value = Values::None;
+                        current.value = Some(Values::None);
                     } else {
-                        current.value = text.as_ref().into();
+                        current.value = Some(text.as_ref().into());
                     }
                 }
             } else if let Event::End(_) = event {
@@ -83,45 +83,43 @@ impl Node {
     }
 
     pub fn to_xml(&self) -> String {
-        let mut buffer = Vec::new();
-        self.do_to_xml(&mut buffer);
+        let mut start = BytesStart::new(&self.name);
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut writer = Writer::new(&mut buffer);
+        self.do_to_xml(&mut start, &mut writer);
         String::from_utf8_lossy(buffer.as_slice()).to_string()
     }
 
-    fn do_to_xml(&self, buff_out: &mut Vec<u8>) {
-        let mut buffer: Vec<u8> = Vec::new();
-        let mut writer = Writer::new(&mut buffer);
-        let start = BytesStart::new(&self.name);
+    fn do_to_xml(&self, start: &mut BytesStart<'_>, writer: &mut Writer<&mut Vec<u8>>) {
+        self.attributes.iter().for_each(|a| {
+            start.push_attribute((a.0.as_str(), a.1.as_str()));
+        });
 
-        if let Values::None = &self.value {
+        if let Some(Values::None) = &self.value {
             writer
-                .write_event(Event::Empty(start))
+                .write_event(Event::Empty(start.clone()))
                 .expect("event error");
         } else {
             writer
                 .write_event(Event::Start(start.clone()))
                 .expect("event error");
 
-            if let Values::String(s) = &self.value {
+            if self.value.is_some() {
+                let temp = self.value.as_ref().expect("get value error");
                 writer
-                    .write_event(Event::Text(BytesText::new(s)))
-                    .expect("event error");
-            } else if let Values::Float(f) = self.value {
-                writer
-                    .write_event(Event::Text(BytesText::new(&f.to_string())))
+                    .write_event(Event::Text(BytesText::new(temp.to_string().as_str())))
                     .expect("event error");
             }
+
+            self.children.iter().for_each(|e| {
+                let mut inner_start = BytesStart::new(&e.name);
+                e.do_to_xml(&mut inner_start, writer);
+            });
 
             writer
                 .write_event(Event::End(BytesEnd::new(&self.name)))
                 .expect("event error");
-
-            self.children.iter().for_each(|e| {
-                e.do_to_xml(buff_out);
-            });
         }
-
-        buff_out.extend_from_slice(buffer.as_slice());
     }
 }
 
@@ -147,7 +145,7 @@ impl From<&str> for Node {
 static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})$").unwrap());
 static RE2: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap());
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default,PartialEq)]
 pub enum Values {
     #[default]
     None,
@@ -215,11 +213,11 @@ impl From<i64> for Values {
 impl Display for Values {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Values::Float(v) = self {
-            write!(f, "{:.2}", v)
+            write!(f, "{}", v)
         } else if let Values::YearMonth(year, month) = self {
-            write!(f, "{}-{}", year, month)
+            write!(f, "{}-{:02}", year, month)
         } else if let Values::YearMonthDay(year, month, day) = self {
-            write!(f, "{}-{}-{}", year, month, day)
+            write!(f, "{}-{:02}-{:02}", year, month, day)
         } else if let Values::Integer(i) = self {
             write!(f, "{}", i)
         } else if let Values::String(s) = self {
