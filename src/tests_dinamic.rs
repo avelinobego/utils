@@ -74,7 +74,7 @@ fn test_to_xml_none() {
 
     let node = Node {
         name: "vazio".into(),
-        value: Some("".into()),
+        value: None,
         attributes: Vec::default(),
         children: Vec::default(),
     };
@@ -108,7 +108,7 @@ fn test_to_xml_empty() {
 
     let node = Node {
         name: "sem_valor".into(),
-        value: None,
+        value: Some("".into()),
         attributes: vec![],
         children: Vec::default(),
     };
@@ -135,7 +135,6 @@ fn test_to_xml_float_attr_children() {
     let node = Node {
         name: "salario".into(),
         value: None,
-        // attributes: vec![],
         attributes: vec![
             ("tipo".into(), "mensal".into()),
             ("mes".into(), "janeiro".into()),
@@ -143,7 +142,6 @@ fn test_to_xml_float_attr_children() {
         ],
         children: vec![nome, profissao],
     };
-    // println!("{}", node.to_xml());
 
     assert_eq!(
         node.to_xml(),
