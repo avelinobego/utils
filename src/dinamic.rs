@@ -95,26 +95,32 @@ impl Node {
             start.push_attribute((a.0.as_str(), a.1.as_str()));
         });
 
-        if let Some(Values::None) = &self.value {
-            writer
-                .write_event(Event::Empty(start.clone()))
-                .expect("event error");
+        if self.value.is_none() {
+            if self.children.is_empty() {
+                writer
+                    .write_event(Event::Empty(start.clone()))
+                    .expect("event error");
+            } else {
+                writer
+                    .write_event(Event::Start(start.clone()))
+                    .expect("event error");
+                self.children.iter().for_each(|e| {
+                    let mut inner_start = BytesStart::new(&e.name);
+                    e.do_to_xml(&mut inner_start, writer);
+                });
+                writer
+                    .write_event(Event::End(BytesEnd::new(&self.name)))
+                    .expect("event error");
+            }
         } else {
             writer
                 .write_event(Event::Start(start.clone()))
                 .expect("event error");
 
-            if self.value.is_some() {
-                let temp = self.value.as_ref().expect("get value error");
-                writer
-                    .write_event(Event::Text(BytesText::new(temp.to_string().as_str())))
-                    .expect("event error");
-            }
-
-            self.children.iter().for_each(|e| {
-                let mut inner_start = BytesStart::new(&e.name);
-                e.do_to_xml(&mut inner_start, writer);
-            });
+            let temp = self.value.as_ref().expect("get value error");
+            writer
+                .write_event(Event::Text(BytesText::new(temp.to_string().as_str())))
+                .expect("event error");
 
             writer
                 .write_event(Event::End(BytesEnd::new(&self.name)))
@@ -145,7 +151,7 @@ impl From<&str> for Node {
 static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})$").unwrap());
 static RE2: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d{4})-(\d{2})-(\d{2})$").unwrap());
 
-#[derive(Debug, Clone, Default,PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum Values {
     #[default]
     None,
