@@ -32,7 +32,8 @@ fn test_macro() {
 
     let child = node!("child");
     let child2 = node!("child2");
-    let root = node!("root"; @child vec![child,child2]);
+    let vc = vec![child,child2];
+    let root = node!("root"; @child vc);
     dbg!(root);
 
     let child = node!("child"; @val "Avelino Bego");
