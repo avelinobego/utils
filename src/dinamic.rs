@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 use once_cell::sync::Lazy;
 use quick_xml::{
@@ -83,11 +83,15 @@ impl Node {
     }
 
     pub fn to_xml(&self) -> String {
+        String::from_utf8_lossy(&self.get_buffer()).to_string()
+    }
+
+    pub fn get_buffer(&self) -> Cow<'_, [u8]> {
         let mut start = BytesStart::new(&self.name);
         let mut buffer: Vec<u8> = Vec::new();
         let mut writer = Writer::new(&mut buffer);
         self.do_to_xml(&mut start, &mut writer);
-        String::from_utf8_lossy(buffer.as_slice()).to_string()
+        Cow::from(buffer)
     }
 
     fn do_to_xml(&self, start: &mut BytesStart<'_>, writer: &mut Writer<&mut Vec<u8>>) {
@@ -231,7 +235,7 @@ impl Display for Values {
         } else if let Values::None = self {
             write!(f, "")
         } else {
-            write!(f, "não implementado")
+            write!(f, "not implemented")
         }
     }
 }
